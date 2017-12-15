@@ -53,9 +53,11 @@ def get_pyweed():
     return PyWeedGUI()
 
 
-def launch():
+def launch(jupyter=False):
     """
     Basic startup process.
+    
+    :param jupyter: set to True when launching from Jupyter, returns the pyweed instance
     """
     from PyQt4 import QtGui, QtCore
     from pyweed.gui.SplashScreenHandler import SplashScreenHandler
@@ -64,12 +66,15 @@ def launch():
     # See https://stackoverflow.com/questions/31952711/
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
 
-    app = QtGui.QApplication(sys.argv)
+    app = QtGui.QApplication([])
     splashScreenHandler = SplashScreenHandler()
     app.processEvents()
     pyweed = get_pyweed()
     splashScreenHandler.finish(pyweed.mainWindow)
-    sys.exit(app.exec_())
+    if jupyter:
+        return pyweed
+    else:
+        sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
