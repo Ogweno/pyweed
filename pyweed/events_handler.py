@@ -112,12 +112,13 @@ class EventsHandler(SignalingObject):
     Most of the work is pushed off into the thread, this handler mainly acts as a bridge.
     """
 
-    def __init__(self, pyweed):
+    catalog = None
+
+    def __init__(self):
         """
         Initialization.
         """
         super(EventsHandler, self).__init__()
-        self.pyweed = pyweed
         self.catalog_loader = None
 
     def load_catalog(self, request):
@@ -126,6 +127,7 @@ class EventsHandler(SignalingObject):
         self.catalog_loader.start()
 
     def on_catalog_loaded(self, event_catalog):
+        self.catalog = event_catalog
         self.done.emit(event_catalog)
 
     def cancel(self):

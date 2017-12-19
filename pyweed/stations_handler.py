@@ -173,14 +173,16 @@ class StationsHandler(SignalingObject):
     Container for stations.
     """
 
-    def __init__(self, pyweed):
+    inventory = None
+
+    def __init__(self):
         """
         Initialization.
         """
         super(StationsHandler, self).__init__()
 
-        self.pyweed = pyweed
         self.inventory_loader = None
+        self.inventory = None
 
     def load_inventory(self, request):
         try:
@@ -191,6 +193,7 @@ class StationsHandler(SignalingObject):
             self.done.emit(e)
 
     def on_inventory_loaded(self, inventory):
+        self.inventory = inventory
         self.done.emit(inventory)
 
     def cancel(self):

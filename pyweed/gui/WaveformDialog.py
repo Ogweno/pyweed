@@ -257,8 +257,8 @@ class WaveformDialog(BaseDialog, WaveformDialog.Ui_WaveformDialog):
         self.saveDirectoryPushButton.setText(self.waveformDirectory)
         self.saveDirectoryPushButton.setFocusPolicy(QtCore.Qt.NoFocus)
 
-        # Waveforms
-        self.waveforms_handler = WaveformsHandler(LOGGER, pyweed.preferences, pyweed.station_client)
+        # Connect to the handler
+        self.waveforms_handler = pyweed.waveforms_handler
         # The callbacks here are expensive, so use QueuedConnection to run them asynchronously
         self.waveforms_handler.progress.connect(self.onWaveformDownloaded, QtCore.Qt.QueuedConnection)
         self.waveforms_handler.done.connect(self.onAllDownloaded, QtCore.Qt.QueuedConnection)
@@ -328,8 +328,6 @@ class WaveformDialog(BaseDialog, WaveformDialog.Ui_WaveformDialog):
         LOGGER.debug('Loading waveform choices...')
 
         self.resetDownload()
-
-        self.waveforms_handler.create_waveforms(self.pyweed)
 
         # Add events to the eventComboBox -------------------------------
 

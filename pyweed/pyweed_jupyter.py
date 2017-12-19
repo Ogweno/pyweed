@@ -53,7 +53,7 @@ def resolve_data_center(self, data_center,
     return (data_center, client)
 
 
-class PyWeedCore():
+class PyWeedJupyter():
     """
     This is the basic interface exposed to Jupyter.
     """
@@ -75,7 +75,7 @@ class PyWeedCore():
     selected_station_ids = None
 
     def __init__(self):
-        super(PyWeedCore, self).__init__()
+        super(PyWeedJupyter, self).__init__()
 
         self.configure_logging()
 
@@ -84,12 +84,14 @@ class PyWeedCore():
         self.load_preferences()
         self.manage_cache()
 
+        self.events = []
         self.selected_event_ids = []
+        self.stations = []
         self.selected_station_ids = []
 
-        self.events_handler = EventsHandler()
-        self.stations_handler = StationsHandler()
-        self.waveforms_handler = WaveformsHandler(self.preferences.Waveforms.downloadDir)
+        self.events_handler = EventsHandler(self)
+        self.stations_handler = StationsHandler(self)
+        self.waveforms_handler = WaveformsHandler(self)
 
         self.gui = PyWeedGUI(self)
 
@@ -163,29 +165,26 @@ class PyWeedCore():
             )
         self.stations_handler.load_inventory(request)
 
-    def load_waveforms(self, priority_ids, other_ids, time_window):
-        self.waveforms_handler.download_waveforms(self.station_client, priority_ids, other_ids, time_window)
-
     ###############
     # Access Data
     ###############
 
     @property
-    def events(self):
-        return self.events_manager.catalog
+    def events_catalog(self):
+        return self.events_manager.events
 
     def iter_selected_events(self):
         """
         Iterate over the selected events
         """
-        if self.events:
-            for event in self.events:
+        if self.events_manager.catalog:
+            for event in self.events_manager.catalog:
                 event_id = event.resource_id.id
                 if event_id in self.selected_event_ids:
                     yield event
 
     @property
-    def stations(self):
+    def stations_inventory(self):
         return self.stations_manager.inventory
 
     def iter_selected_stations(self):
@@ -193,8 +192,8 @@ class PyWeedCore():
         Iterate over the selected stations (channels)
         Yields (network, station, channel) for each selected channel
         """
-        if self.stations:
-            for (network, station, channel) in iter_channels(self.stations):
+        if self.stations_manager.inventory:
+            for (network, station, channel) in iter_channels(self.stations_manager.inventory):
                 sncl = get_sncl(network, station, channel)
                 if sncl in self.selected_station_ids:
                     yield (network, station, channel)
@@ -203,12 +202,7 @@ class PyWeedCore():
     # Waveforms
     ###############
 
-    @property
-    def waveforms(self):
-        return self.waveforms_handler.waveforms
-
-    def show_waveforms(self):
-        self.waveforms_handler.create_waveforms(self.iter_selected_events_stations())
+    def open_waveforms(self):
         self.gui.openWaveformsDialog()
 
     def iter_selected_events_stations(self):
@@ -331,6 +325,6 @@ class PyWeedCore():
 
 
 if __name__ == "__main__":
-    pyweed = PyWeedCore()
+    pyweed = PyWeedJupyter()
     # Do something?
 

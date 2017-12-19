@@ -49,8 +49,8 @@ def get_pyweed():
     """
     Load the PyWEED GUI code, this is where most of the expensive stuff happens
     """
-    from pyweed.gui.PyWeedGUI import PyWeedGUI
-    return PyWeedGUI()
+    from pyweed.pyweed_core import PyWeedCore
+    return PyWeedCore()
 
 
 def launch(jupyter=False):
@@ -70,7 +70,7 @@ def launch(jupyter=False):
     splashScreenHandler = SplashScreenHandler()
     app.processEvents()
     pyweed = get_pyweed()
-    splashScreenHandler.finish(pyweed.mainWindow)
+    splashScreenHandler.finish(pyweed.gui.mainWindow)
     if jupyter:
         return pyweed
     else:

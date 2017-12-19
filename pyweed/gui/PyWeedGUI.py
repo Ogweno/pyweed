@@ -31,22 +31,23 @@ from pyweed.stations_handler import StationsHandler
 from pyweed.gui.WaveformDialog import WaveformDialog
 from pyweed.gui.ConsoleDialog import ConsoleDialog
 from pyweed.gui.PreferencesDialog import PreferencesDialog
-from pyweed.pyweed_core import PyWeedCore
 from pyweed.summary import get_filtered_catalog, get_filtered_inventory
 
 LOGGER = logging.getLogger(__name__)
 
 
-class PyWeedGUI(PyWeedCore, QtCore.QObject):
+class PyWeedGUI(QtCore.QObject):
 
     # We need to define mainWindow since we may check it before we are fully initialized
     mainWindow = None
 
-    def __init__(self):
+    def __init__(self, pyweed):
         super(PyWeedGUI, self).__init__()
 
+        self.pyweed = pyweed
+
         LOGGER.info('Setting up main window...')
-        self.mainWindow = MainWindow(self)
+        self.mainWindow = MainWindow(self.pyweed)
 
         # Logging
         # see:  http://stackoverflow.com/questions/28655198/best-way-to-display-logs-in-pyqt
@@ -56,13 +57,17 @@ class PyWeedGUI(PyWeedCore, QtCore.QObject):
         # Waveforms
         # NOTE:  The WaveformsHandler is created inside waveformsDialog.  It is only relevant to that Dialog.
         LOGGER.info('Setting up waveforms dialog...')
-        self.waveformsDialog = WaveformDialog(self, self.mainWindow)
+        self.waveformsDialog = WaveformDialog(self.pyweed, self.mainWindow)
 
         # Preferences
-        self.preferencesDialog = PreferencesDialog(self, self.mainWindow)
+        self.preferencesDialog = PreferencesDialog(self.pyweed, self.mainWindow)
+
+        # Connect to handlers
+        pyweed.events_handler.done.connect(self.on_events_loaded)
+        pyweed.stations_handler.done.connect(self.on_stations_loaded)
 
         # Python console
-        self.console = ConsoleDialog(self, self.mainWindow)
+        self.console = None  # ConsoleDialog(self, self.mainWindow)
 
         self.configureMenu()
 
@@ -76,12 +81,10 @@ class PyWeedGUI(PyWeedCore, QtCore.QObject):
     ###############
 
     def set_event_options(self, options):
-        super(PyWeedGUI, self).set_event_options(options)
         if self.mainWindow:
             self.mainWindow.eventOptionsWidget.setOptions()
 
     def on_events_loaded(self, events):
-        super(PyWeedGUI, self).on_events_loaded(events)
         if self.mainWindow:
             self.mainWindow.onEventsLoaded(events)
 
@@ -90,12 +93,10 @@ class PyWeedGUI(PyWeedCore, QtCore.QObject):
     ###############
 
     def set_station_options(self, options):
-        super(PyWeedGUI, self).set_station_options(options)
         if self.mainWindow:
             self.mainWindow.stationOptionsWidget.setOptions()
 
     def on_stations_loaded(self, stations):
-        super(PyWeedGUI, self).on_stations_loaded(stations)
         if self.mainWindow:
             self.mainWindow.onStationsLoaded(stations)
 
@@ -106,6 +107,7 @@ class PyWeedGUI(PyWeedCore, QtCore.QObject):
     def openWaveformsDialog(self):
         self.waveformsDialog.show()
         self.waveformsDialog.loadWaveformChoices()
+        
 
     ###############
     # Summary
@@ -181,7 +183,7 @@ class PyWeedGUI(PyWeedCore, QtCore.QObject):
         viewMenu = mainMenu.addMenu('View')
 
         showConsoleAction = QtGui.QAction("Show Python Console", self)
-        showConsoleAction.triggered.connect(self.console.show)
+        # showConsoleAction.triggered.connect(self.console.show)
         viewMenu.addAction(showConsoleAction)
 
         showLogsAction = QtGui.QAction("Show Logs", self)

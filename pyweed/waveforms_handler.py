@@ -109,7 +109,7 @@ class WaveformEntry(AttribDict):
         """
         Update any values that come from the WaveformHander
         """
-        self.download_dir = waveform_handler.downloadDir
+        self.download_dir = waveform_handler.download_dir
         self.time_window = waveform_handler.time_window
 
     def prepare(self):
@@ -294,18 +294,13 @@ class WaveformsHandler(SignalingObject):
 
     progress = QtCore.pyqtSignal(object)
 
-    def __init__(self, logger, preferences, client):
+    def __init__(self, download_dir):
         """
         Initialization.
         """
         super(WaveformsHandler, self).__init__()
 
-        # Keep a reference to globally shared components
-        self.preferences = preferences
-        self.client = client
-
-        # Important preferences
-        self.downloadDir = self.preferences.Waveforms.downloadDir
+        self.download_dir = download_dir 
 
         # Loader component
         self.waveforms_loader = None
@@ -322,15 +317,17 @@ class WaveformsHandler(SignalingObject):
         # Waveforms indexed by id
         self.waveforms_by_id = None
 
-    def create_waveforms(self, pyweed):
+    def create_waveforms(self, events_stations):
         """
-        Create a list of waveform entries based on the current event/station selections
+        Create a waveform for each event/station combination
+        
+        :param events_stations: an iterable of (event, network, station, channel) tuples
         """
         self.waveforms = [
             WaveformEntry(
                 event, network, station, channel
             )
-            for (event, network, station, channel) in pyweed.iter_selected_events_stations()
+            for (event, network, station, channel) in events_stations
         ]
         self.waveforms_by_id = dict(
             (waveform.waveform_id, waveform)
@@ -353,7 +350,7 @@ class WaveformsHandler(SignalingObject):
                 self.progress.emit(WaveformResult(waveform.waveform_id, None))
         self.done.emit(CancelledException())
 
-    def download_waveforms(self, priority_ids, other_ids, time_window):
+    def download_waveforms(self, client, priority_ids, other_ids, time_window):
         """
         Initiate a download of all the given waveforms
         """
@@ -364,7 +361,9 @@ class WaveformsHandler(SignalingObject):
         # Prepare the waveform entries
         self.time_window = time_window
         for waveform in self.waveforms:
-            waveform.update_handler_values(self)
+            # Set attributes that come from this handler
+            waveform.download_dir = self.download_dir
+            waveform.time_window = self.time_window
             # Clear error flag and set loading flag
             waveform.error = None
             waveform.loading = True
@@ -374,7 +373,7 @@ class WaveformsHandler(SignalingObject):
         waveforms = [self.get_waveform(waveform_id) for waveform_id in waveform_ids]
 
         # Create a worker to load the data in a separate thread
-        self.waveforms_loader = WaveformsLoader(self.client, waveforms)
+        self.waveforms_loader = WaveformsLoader(client, waveforms)
         self.waveforms_loader.progress.connect(self.on_downloaded)
         self.waveforms_loader.done.connect(self.on_all_downloaded)
         self.waveforms_loader.start()
