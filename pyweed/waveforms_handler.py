@@ -223,11 +223,12 @@ def load_waveform(client, waveform):
     return True
 
 
-class WaveformsLoader(SignalingThread):
+class WaveformsLoader(QtCore.QThread):
     """
     Thread to download waveform data and generate an image
     """
     progress = QtCore.pyqtSignal(object)
+    done = QtCore.pyqtSignal(object)
 
     def __init__(self, client, waveforms):
         """
@@ -262,6 +263,9 @@ class WaveformsLoader(SignalingThread):
         self.futures = {}
         self.done.emit(None)
 
+    def __del__(self):
+        self.wait()
+
     def clearFutures(self):
         """
         Cancel any outstanding tasks
@@ -281,7 +285,7 @@ class WaveformsLoader(SignalingThread):
         self.clearFutures()
 
 
-class WaveformsHandler(SignalingObject):
+class WaveformsHandler(QtCore.QObject):
     """
     Manage the waveforms retrieval.
 
@@ -292,7 +296,9 @@ class WaveformsHandler(SignalingObject):
     the size of the visible table.
     """
 
+    started = QtCore.pyqtSignal()
     progress = QtCore.pyqtSignal(object)
+    done = QtCore.pyqtSignal(object)
 
     def __init__(self, download_dir):
         """
@@ -304,10 +310,6 @@ class WaveformsHandler(SignalingObject):
 
         # Loader component
         self.waveforms_loader = None
-        # Thread to run the loader in
-        self.thread = None
-        # Asynchronous requests, each is working to download a single waveform
-        self.requests = None
 
         # A TimeWindow object giving offsets and phase arrivals
         self.time_window = TimeWindow()
@@ -357,6 +359,8 @@ class WaveformsHandler(SignalingObject):
         LOGGER.info('Downloading waveforms')
         LOGGER.debug("Priority IDs: %s" % (priority_ids,))
         LOGGER.debug("Other IDs: %s" % (other_ids,))
+
+        self.started.emit()
 
         # Prepare the waveform entries
         self.time_window = time_window

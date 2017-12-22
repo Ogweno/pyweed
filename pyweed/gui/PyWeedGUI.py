@@ -62,10 +62,6 @@ class PyWeedGUI(QtCore.QObject):
         # Preferences
         self.preferencesDialog = PreferencesDialog(self.pyweed, self.mainWindow)
 
-        # Connect to handlers
-        pyweed.events_handler.done.connect(self.on_events_loaded)
-        pyweed.stations_handler.done.connect(self.on_stations_loaded)
-
         # Python console
         self.console = None  # ConsoleDialog(self, self.mainWindow)
 
@@ -141,13 +137,13 @@ class PyWeedGUI(QtCore.QObject):
         if loadPath != '':
             try:
                 catalog = read_events(os.path.join(loadPath, 'events.xml'))
-                self.on_events_loaded(catalog)
+                self.pyweed.on_catalog_loaded(catalog)
                 self.mainWindow.selectAllEvents()
             except Exception as e:
                 LOGGER.error("Unable to load events! %s", e)
             try:
                 inventory = read_inventory(os.path.join(loadPath, 'stations.xml'))
-                self.on_stations_loaded(inventory)
+                self.pyweed.on_inventory_loaded(inventory)
                 self.mainWindow.selectAllStations()
             except Exception as e:
                 LOGGER.error("Unable to load stations! %s", e)

@@ -31,7 +31,7 @@ from pyweed.gui.PyWeedGUI import PyWeedGUI
 LOGGER = logging.getLogger(__name__)
 
 
-def resolve_data_center(self, data_center,
+def resolve_data_center(data_center,
                         current_data_center, current_client,
                         other_data_center, other_client, services):
     """
@@ -65,19 +65,25 @@ class PyWeedCore():
     event_client = None
     _event_data_center = None
     event_options = None
-    events_manager = None
+    events_handler = None
     selected_event_ids = None
 
     station_client = None
     _station_data_center = None
     station_options = None
-    stations_manager = None
+    stations_handler = None
     selected_station_ids = None
+    
+    waveforms_handler = None
+    
+    clients = None
 
     def __init__(self):
         super(PyWeedCore, self).__init__()
 
         self.configure_logging()
+
+        self.clients = {}
 
         self.event_options = EventOptions()
         self.station_options = StationOptions()
@@ -97,6 +103,24 @@ class PyWeedCore():
         self.manage_cache(init=False)
         self.save_preferences()
 
+    def get_create_client(self, data_center, required_services=None):
+        """
+        Return a client pointing to the given data center. These are expensive to create, so we cache them.
+        
+        :param data_center: The data center label or base_url passed to the Client
+        :param required_services: List of services (eg. ["event", "station"]) required, if the client
+                        doesn't support all of these, raise an error
+        """
+        client = self.clients.get(data_center)
+        if not client:
+            client = Client(data_center)
+        # Verify that the client provides the services we require
+        if required_services:
+            for service in required_services:
+                if service not in client.services:
+                    raise Exception("The %s data center does not provide a %s service" % (data_center, service))
+        return client
+
     @property
     def event_data_center(self):
         return self._event_data_center
@@ -104,13 +128,10 @@ class PyWeedCore():
     @event_data_center.setter
     def event_data_center(self, data_center):
         try:
-            (data_center, client) = resolve_data_center(
-                data_center, self._event_data_center, self.event_client,
-                self._station_data_center, self.station_client, ['event'])
+            self.event_client = self.get_create_client(data_center, required_services=['event'])
             self._event_data_center = data_center
-            self.event_client = client
-        except Exception:
-            pass
+        except Exception as e:
+            LOGGER.warning("Couldn't set data center: %s", e)
 
     @property
     def station_data_center(self):
@@ -119,13 +140,10 @@ class PyWeedCore():
     @station_data_center.setter
     def station_data_center(self, data_center):
         try:
-            (data_center, client) = resolve_data_center(
-                data_center, self._station_data_center, self.station_client,
-                self._event_data_center, self.event_client, ['station', 'dataselect'])
+            self.station_client = self.get_create_client(data_center, required_services=['station', 'dataselect'])
             self._station_data_center = data_center
-            self.station_client = client
-        except Exception:
-            pass
+        except Exception as e:
+            LOGGER.warning("Couldn't set data center: %s", e)
 
     ###############
     # Actions
@@ -172,7 +190,7 @@ class PyWeedCore():
 
     @property
     def events(self):
-        return self.events_manager.catalog
+        return self.events_handler.catalog
 
     def iter_selected_events(self):
         """
@@ -186,7 +204,7 @@ class PyWeedCore():
 
     @property
     def stations(self):
-        return self.stations_manager.inventory
+        return self.stations_handler.inventory
 
     def iter_selected_stations(self):
         """

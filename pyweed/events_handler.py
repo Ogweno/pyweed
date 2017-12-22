@@ -39,11 +39,12 @@ def load_events(client, parameters):
             raise
 
 
-class EventsLoader(SignalingThread):
+class EventsLoader(QtCore.QThread):
     """
     Thread to handle event requests
     """
     progress = QtCore.pyqtSignal()
+    done = QtCore.pyqtSignal(object)
 
     def __init__(self, request):
         """
@@ -53,6 +54,9 @@ class EventsLoader(SignalingThread):
         self.request = request
         self.futures = {}
         super(EventsLoader, self).__init__()
+
+    def __del__(self):
+        self.wait()
 
     def run(self):
         """
@@ -106,11 +110,14 @@ class EventsLoader(SignalingThread):
         self.clearFutures()
 
 
-class EventsHandler(SignalingObject):
+class EventsHandler(QtCore.QObject):
     """
     This is the handler that the application works with. 
     Most of the work is pushed off into the thread, this handler mainly acts as a bridge.
     """
+
+    started = QtCore.pyqtSignal()
+    done = QtCore.pyqtSignal(object)
 
     catalog = None
 
@@ -122,6 +129,7 @@ class EventsHandler(SignalingObject):
         self.catalog_loader = None
 
     def load_catalog(self, request):
+        self.started.emit()
         self.catalog_loader = EventsLoader(request)
         self.catalog_loader.done.connect(self.on_catalog_loaded)
         self.catalog_loader.start()

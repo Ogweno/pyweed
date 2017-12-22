@@ -146,6 +146,12 @@ class MainWindow(QtGui.QMainWindow, MainWindow.Ui_MainWindow):
         # Set MainWindow properties
         self.setWindowTitle('%s version %s' % (__app_name__, __version__))
 
+        # Connect to the event/station handlers
+        self.pyweed.events_handler.started.connect(self.onEventsLoading)
+        self.pyweed.events_handler.done.connect(self.onEventsLoaded)
+        # self.pyweed.stations_handler.started.connect(self.onStationsLoading)
+        self.pyweed.stations_handler.done.connect(self.onStationsLoaded)
+
         # Options widgets
         self.eventOptionsWidget = EventOptionsWidget(
             self, self.pyweed.event_options, self.pyweed.station_options,
@@ -270,8 +276,6 @@ class MainWindow(QtGui.QMainWindow, MainWindow.Ui_MainWindow):
         Trigger the event retrieval from web services
         """
         LOGGER.info('Loading events...')
-        self.eventsSpinner.show()
-        self.getEventsButton.setEnabled(False)
         self.pyweed.fetch_events()
 
     def updateSeismap(self, events=False, stations=False):
@@ -320,6 +324,13 @@ class MainWindow(QtGui.QMainWindow, MainWindow.Ui_MainWindow):
         except Exception as e:
             LOGGER.error("Failed to update seismap! %s", e, exc_info=True)
 
+    def onEventsLoading(self):
+        """
+        Update the UI when events are being loaded
+        """
+        self.eventsSpinner.show()
+        self.getEventsButton.setEnabled(False)
+
     def onEventsLoaded(self, events):
         """
         Handler triggered when the EventsHandler finishes loading events
@@ -351,9 +362,14 @@ class MainWindow(QtGui.QMainWindow, MainWindow.Ui_MainWindow):
         Trigger the channel metadata retrieval from web services
         """
         LOGGER.info('Loading stations...')
+        self.pyweed.fetch_stations()
+
+    def onStationsLoading(self):
+        """
+        Update the UI when stations are being loaded
+        """
         self.stationsSpinner.show()
         self.getStationsButton.setEnabled(False)
-        self.pyweed.fetch_stations()
 
     def onStationsLoaded(self, stations):
         """
@@ -417,7 +433,7 @@ class MainWindow(QtGui.QMainWindow, MainWindow.Ui_MainWindow):
             eventIDs.append(event.resource_id.id)
 
         # Update the events_handler with the latest selection information
-        self.pyweed.set_selected_event_ids(eventIDs)
+        self.pyweed.selected_event_ids = eventIDs
 
         self.seismap.addEventsHighlighting(points)
 
@@ -453,7 +469,7 @@ class MainWindow(QtGui.QMainWindow, MainWindow.Ui_MainWindow):
                 pass
 
         # Update the stations_handler with the latest selection information
-        self.pyweed.set_selected_station_ids(sncls)
+        self.pyweed.selected_station_ids = sncls
 
         self.seismap.addStationsHighlighting(points)
 
